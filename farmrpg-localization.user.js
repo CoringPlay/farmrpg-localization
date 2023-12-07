@@ -1,4 +1,16 @@
-import translations from 'https://raw.githubusercontent.com/CoringPlay/farmrpg-localization/main/localization.js';
+// ==UserScript==
+// @name         FarmRPG Localizer
+// @namespace    http://tampermonkey.net/
+// @version      0.1
+// @description  Localize FarmRPG website
+// @author       You
+// @match        https://farmrpg.com/*
+// @grant        none
+// ==/UserScript==
+
+// Импортируем основной скрипт
+const script = document.createElement('script');
+script.src = 'https://raw.githubusercontent.com/CoringPlay/farmrpg-localization/main/localization.js';
 
 function replaceText(node) {
     node.nodeValue = node.nodeValue.replace(
