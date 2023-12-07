@@ -1,61 +1,60 @@
 // ==UserScript==
-// @name         FarmRPG Localizer
+// @name         FarmRPG Localization
 // @namespace    http://tampermonkey.net/
-// @version      0.1
-// @description  Localize FarmRPG website without language selection
-// @author       You
+// @version      0.3
+// @description  Localize FarmRPG website
+// @author       Coring
 // @match        https://farmrpg.com/*
-// @grant        none
+// @grant        GM_xmlhttpRequest
 // ==/UserScript==
 
-(async function() {
+(function() {
     'use strict';
 
-    // Загрузка файла с переводами
-    const response = await fetch('https://raw.githubusercontent.com/CoringPlay/farmrpg-localization/main/localization.js');
-    const translations = await response.json();
-
-    function replaceText(node) {
-        node.nodeValue = node.nodeValue.replace(
-            new RegExp(Object.keys(translations).join('|'), 'g'),
-            matched => translations[matched]
-        );
+    function loadTranslations(callback) {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: "https://raw.githubusercontent.com/CoringPlay/farmrpg-localization/main/localization.json",
+            onload: function(response) {
+                if (response.status === 200) {
+                    const translations = JSON.parse(response.responseText);
+                    callback(translations);
+                } else {
+                    console.error("Ошибка загрузки файла с переводами:", response.statusText);
+                }
+            },
+            onerror: function(error) {
+                console.error("Произошла ошибка при выполнении запроса:", error);
+            }
+        });
     }
-
-    function traverse(node) {
-        const treeWalker = document.createTreeWalker(
-            node,
-            NodeFilter.SHOW_TEXT,
-            null,
-            false
-        );
-
-        while (treeWalker.nextNode()) {
-            replaceText(treeWalker.currentNode);
+    function localizeText(node, translations) {
+        const originalText = node.textContent.trim();
+        if (translations[originalText]) {
+            node.textContent = translations[originalText];
         }
     }
-
-    function handleMutations(mutationsList) {
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach(node => {
-                    traverse(node);
-                });
+    function traverseAndLocalize(node, translations) {
+        if (node.nodeType === 3) {
+            localizeText(node, translations);
+        } else {
+            for (const child of node.childNodes) {
+                traverseAndLocalize(child, translations);
             }
         }
     }
+    function localizePage(translations) {
+        const body = document.body;
+        traverseAndLocalize(body, translations);
+        const observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+                mutation.addedNodes.forEach(addedNode => {
+                    traverseAndLocalize(addedNode, translations);
+                });
+            });
+        });
+        observer.observe(body, { childList: true, subtree: true });
+    }
+    loadTranslations(localizePage);
 
-    const observer = new MutationObserver(handleMutations);
-
-    const observerConfig = {
-        childList: true,
-        subtree: true,
-        characterData: true
-    };
-
-    // Применяем локализацию при загрузке
-    traverse(document.body);
-
-    // Начинаем отслеживание изменений
-    observer.observe(document.body, observerConfig);
 })();
